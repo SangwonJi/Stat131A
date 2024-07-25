@@ -1,0 +1,331 @@
+---
+title: "Final Project Sample"
+output: pdf_document
+date: "2023-05-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, results='hide'}
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+library(ggfortify)
+```
+
+# Visualizing the Data
+
+## Importing the Data
+
+```{r}
+data <- read.csv(file = "cholangitis.csv", header = TRUE, 
+                 stringsAsFactors = TRUE)
+summary(data)
+```
+
+## Basic exploratory data analysis 
+
+### Number of Days (Our Response Variable)
+
+```{r}
+hist(data$n_days, xlab = "Number of Days",
+     main = "Histogram of number of days.", col = "skyblue")
+```
+
+We can observe that our response variable is kind of right-skewed. It implies that transformation method can be applied in the regression analysis part.
+
+```{r}
+data$age <- round(data$age / 365)
+```
+
+Since 'age' is encoded in days, I transformed the age variable from days to years by dividing by 365 which can help make the variable more interpretable.
+
+### Age
+
+```{r, warning=FALSE}
+#Codes for Age
+age <- data$age
+Ages <- data.frame(age)
+mean_age <- mean(age)
+sd_age <- sd(age)
+x.dens <- dnorm(age, mean = mean_age, sd = sd_age)
+
+#Age histogram
+ggplot(Ages, aes(age, y = ..density..)) +
+geom_histogram(bins = 10, fill = 'grey', color = 'black', binwidth = 4) +
+  scale_x_continuous(breaks = c(20,30,40,50,60,70,80), limits = c(24, 80)) +
+geom_line(aes(x = age, y = x.dens, color = 'red'),data = Ages) +
+labs(y = 'Density', title = 'Distribution of Ages') +
+theme_bw() +
+theme(legend.position = "none")
+```
+
+First looking at the age distribution of the whole group seems normally distributed ranged from 24 to 80, with age 50 being the most porportion of the whole group. Since it's a mediacal test, we can see that the general age is pretty high. Since the age is written in days, we would divide it by 365 days, and turn them into a year to make it look better visually. The transformed age varialbe follows the normal distribution. That is to say, it is symmetrically distributed around the mean age.
+
+### Sex
+
+```{r}
+sex <- data %>%
+  group_by(sex) %>% 
+  count()
+
+sex_dist <- sex %>% 
+  ggplot(aes(x = sex, y = n, fill = sex, label = n)) +
+  geom_col() +
+  theme_bw() + 
+  labs(x = "Gender", y = "counts") +
+   geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+sex_dist
+```
+
+The gender count seems odd. There are about females more than male by nine times. In other words, most of our data consists of female. In this case, we might not expect changes in predicted results according to sex.
+
+### Relationship between sex and the number of the days of the study
+
+```{r}
+ggplot(data, aes(x = sex, y = n_days)) +
+  geom_boxplot(fill="slateblue", alpha=0.2) +
+  labs(x = "Gender", y = "Survived Days")
+```
+
+Adding on from gender, I was wondering if there was a difference among gender, therefore I plotted through a boxplot to see if there was a vast difference in the number of days that they survived. The mean seemed to be lower for male, but they seemed not much of a difference in a whole. 
+
+### Gender vs Status and Treatment
+
+```{r}
+gen <- data %>%
+  group_by(status, sex) %>%
+  count()
+
+gen_stat <- gen %>% 
+  ggplot(aes(x = sex , y = n, fill = status, label = n)) +
+  geom_col() +
+  theme_bw() +
+   labs(x= "Gender", y = "Status Counts") +
+geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+
+drug_by_gen <- data %>%
+  group_by(drug, sex) %>%
+  count()
+
+gen_drug <- drug_by_gen %>% 
+  ggplot(aes(x = sex, y = n, fill = drug, label = n)) +
+  geom_col() +
+  theme_bw() +
+  labs(x= "Gender", y = "Treatment Counts") +
+  geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+
+gen_stat + gen_drug
+```
+
+Even though there was a difference in the absolute number among gender, the proportion of status and treatment given was in similar proportion to each other, which kind of relieved the thought that it might be biased somehow. 
+
+### Drug vs Histologic Stages
+
+```{r}
+drug_stage <- data %>%
+  group_by(drug, stage) %>%
+  count()
+
+drug_stage %>% 
+  ggplot(aes(x = drug, y = n, fill = stage, label = n)) +
+  geom_col() +
+  theme_bw() +
+  labs(x = "drug", y= "counts") +
+geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+```
+
+Showing for gender graph as well the counts are different, but within, the proportion are about the same for each other.
+
+### Drug Treatment and Survival by Diease Stage
+
+```{r}
+ggplot(data, aes(x = drug, fill = status)) + geom_bar() + 
+  xlab("Treatment Assigned") + 
+  ggtitle("Drug Treatment and Survival by Disease Stage") +
+  facet_wrap(~ stage)
+```
+
+There isn't dramatic difference among the groups however, 
+
+### Histologit Stages by Status
+
+```{r}
+#status and stage
+status_stage <- data %>%
+  group_by(status, stage) %>%
+  count()
+
+status_stage %>% 
+  ggplot(aes(x = stage, y = n, fill = status, label = n)) +
+  geom_col() +
+  theme_bw() +
+  labs(x= "Stage", y = "counts") +
+  geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+```
+
+We can directly observe that the higher the histologic stage of diasease, the higher number of dead patients at the end of the study.
+
+### Distribution of the222 Response Varialbe.
+
+```{r}
+ggplot(data, aes(x = n_days)) +
+  geom_histogram(fill = "orange", binwidth = 100) +
+  labs(x = "Days survived", y = "Count")
+```
+
+### Write here
+
+```{r}
+ggplot(data, aes(x = drug, y = n_days)) +
+  geom_boxplot() +
+  labs(x = "Drug", y = "Number of Days Survived")
+```
+
+It is hard to say there is a statistically significant difference between the kind of drugs and the number of days of the study.
+
+### Write here
+
+```{r}
+ggplot(data, aes(x = drug, fill = status)) + 
+  geom_bar() + 
+  xlab("Treatment Assigned") + 
+  ggtitle("Drug Treatment and Survival by Disease Stage") + 
+  facet_wrap(~ stage)
+```
+
+# Multivariate Regression
+
+## Data Preprocessing
+
+```{r}
+data <- data[, -1]
+data <- na.omit(data)
+```
+
+I removed the 'id' columnm which is not meaningful in the context of regression analysis. I also removed the rows containing missing values. 
+
+```{r}
+data$status <- as.factor(data$status)
+data$edema <- as.factor(data$edema)
+data$stage <- as.factor(data$stage)
+```
+
+I factorized status and edema since these features have 3 levels each. I also factorized the stage column since the histologic stage of the disease (1, 2, 3, or 4) appears to be an ordinal categorical variable.
+
+```{r}
+data$sex <- as.integer(data$sex == "F")
+data$drug <- as.integer(data$drug == "D-penicillamine")
+data$ascites <- as.integer(data$ascites == "Y")
+data$hepatomegaly <- as.integer(data$hepatomegaly == "Y")
+data$spiders <- as.integer(data$spiders == "Y")
+```
+
+one-hot encoding
+To apply regression model in R, it is important to convert categorical variables into numerical variables so that the model can process and interpret the data correctly.
+
+For sex column, 1 stands for female and 0 for male.
+For drug part, 1 means D-penicillamine and 0 means placebo.
+Otherwise, 1 means Yes and 0 means No.
+
+## Multivariate Regression Analysis:
+
+```{r}
+hist((data$n_days), xlab = "Square root of n_days", 
+     main = "Transformed Response Variable")
+```
+
+```{r}
+hist(sqrt(data$n_days), xlab = "Square root of n_days", 
+     main = "Transformed Response Variable")
+```
+
+In the EDA part, we observed that the distribution of our response variable (n_days) is right-skewed. Therefore, I'm goind to transform this data using square root before I perform multivariate regression analysis. As a result, the distribution is more likely normal distribution.
+
+First, I'm going to use all predictor variables.
+
+```{r}
+sqrt_model <- lm(sqrt(n_days) ~ ., data = data)
+summary(sqrt_model)
+```
+
+### Diagnostic Plots
+
+```{r}
+par(mfrow=c(2,3))
+plot(sqrt_model,which= c(1:5))
+```
+
+```{r}
+# Part 1
+
+# Part 2
+cooks_d <- cooks.distance(full_model)
+threshold_cooks <- which(cooks.distance(full_model) > 0.03)
+
+# Part 3
+leverage <- hatvalues(full_model)
+threshold_leverage <- 2 * (length(coef(full_model)) - 1) / nrow(data)
+outliers_leverage <- which(leverage > threshold_leverage)
+
+outliers_all <- unique(c(outliers_sr, outliers_cooks, outliers_leverage))
+print(outliers_all)
+```
+
+Part 1 (Studentized Residuals): 
+A common threshold for identifying outliers using studentized residuals is an absolute value greater than 2 or 3. Therefore, I found some rows whose studentized residuals are greater than 3.
+
+Part 2 (Cooks Distance):
+A common threshold for identifying outliers using Cook's distance is 4/n, where n is the number of observations.
+
+Part 3 (Leverage):
+A common threshold for identifying outliers using leverage is 2 * (p+1) / n, where p is the number of predictor variables and n is the number of observations. 
+
+```{r}
+data_final <- data[-outliers_all, ]
+```
+
+### PCA
+
+Before performing PCA, we need to standardize our predictor variable to ensure that all variables can be equally treated. Therefore, I'm going to create a new data frame containing only numeric columns.
+
+```{r}
+colss <- c("age", "bilirubin", "cholesterol", "albumin", "copper", "alk_phos", 
+           "sgot", "tryglicerides", "platelets", "prothrombin")
+data_std <- scale(data[, colss])
+pca_result <- prcomp(data_std, center = FALSE, scale = FALSE)
+summary(pca_result)
+```
+
+```{r}
+pca_loadings <- pca_result$rotation
+print(pca_loadings)
+```
+
+```{r}
+biplot(pca_result, scale = 0)
+```
+
+```{r}
+# 1:5 Specifies the Number of top variables to select
+selected_vars <- names(sort(abs(pca_loadings[, 1]), decreasing = TRUE))[1:5]
+print(selected_vars)
+```
+
+### Final Model
+
+```{r}
+model_final <- lm(sqrt(n_days) ~ status + drug + sex + ascites + 
+                    hepatomegaly + spiders + stage + edema + 
+                    bilirubin + copper + sgot + albumin + tryglicerides
+                  , data = data_final)
+summary(model_final)
+```
+
+```{r}
+mean(full_model$residuals^2)
+mean(model_final$residuals^2)
+```
+

@@ -1,0 +1,399 @@
+---
+title: "Cholangitis_Project"
+author: "Sangwon Ji"
+html_document: null
+output: pdf_document
+df_print: paged
+---
+
+```{r setup, include=T}
+knitr::opts_chunk$set(echo = TRUE, tidy.opts=list(width.cutoff=60), tidy=TRUE)
+library(ggplot2)
+library(dplyr)
+library(ggfortify)
+library(patchwork)
+```
+
+# Visualizing the Data
+
+## Importing the data
+
+## Changing data into factors
+
+
+> First step was to changing the data into factor, and take a look of the data if there is any values that has to be changed or removed to make the study better. 
+
+```{r data}
+cholangitis <- read.csv(file = "cholangitis.csv", header = TRUE, sep = ",")
+
+cholangitis$status <- as.factor(cholangitis$status)
+cholangitis$drug <- as.factor(cholangitis$drug)
+cholangitis$sex <- as.factor(cholangitis$sex)
+cholangitis$ascites <- as.factor(cholangitis$ascites)
+cholangitis$hepatomegaly <- as.factor(cholangitis$hepatomegaly)
+cholangitis$spiders <- as.factor(cholangitis$spiders)
+cholangitis$edema <- as.factor(cholangitis$edema)
+cholangitis$stage <- as.factor(cholangitis$stage)
+
+head(cholangitis)
+```
+
+> Looking through the head function to display the first few rows of the dataset, where we can see that they are changed into factors ! 
+
+```{r data1}
+cholangitis <- filter(cholangitis, drug != "NA")
+cholangitis <- na.omit(cholangitis)
+summary(cholangitis)
+```
+
+> Looking through the dataset, for treatments, some patients have recieved none treatments, and when analyzing, we will drop those values of NA within drug. Also, even though it's lot of observations that we are losing through dropping these variables however, it will occur a problem in histogram where it can't read missing values, therefore I'm dropping the values prior in the EDA. 
+
+## Basic exploratory data analysis
+
+> Following code is the codes of the dataframe that I have made prior to making a plots. 
+
+```{r data analysis0, include = T}
+# general data frame that I've used throughout EDA. 
+#sex
+df3 <- cholangitis %>%
+  group_by(sex) %>% 
+  count()
+#drug and stage
+df <- cholangitis %>%
+  group_by(drug, stage) %>%
+  count()
+#drug and status
+df1 <- cholangitis %>%
+  group_by(drug, status) %>%
+  count()
+#status and stage
+df4 <- cholangitis %>%
+  group_by(status, stage) %>%
+  count()
+#gender and status
+df5 <- cholangitis %>%
+  group_by(status, sex) %>%
+  count()
+#gender and drug
+df6 <- cholangitis %>%
+  group_by(drug, sex) %>%
+  count()
+
+dff <- cholangitis %>% 
+  group_by(n_days, age, bilirubin, cholesterol, albumin, copper, alk_phos, sgot,
+           tryglicerides, platelets, prothrombin)
+```
+
+> This code chunk is the code for my dataframes, making it more easier to identify what data frame I've used to make following codes. It's all labeled with what kind of data the dataframe is consisted of. 
+
+```{r, warning=FALSE}
+cholangitis$age <- round(cholangitis$age/365)
+age <- cholangitis$age
+Ages <- data.frame(age)
+mean_age <- mean(age)
+sd_age <- sd(age)
+x.dens <- dnorm(age, mean = mean_age, sd = sd_age)
+#Age histogram
+ggplot(Ages, aes(age, y = ..density..)) +
+geom_histogram(bins = 10, fill = 'grey', color = 'black', binwidth = 4) +
+  scale_x_continuous(breaks = c(20,30,40,50,60,70,80), limits = c(24, 80)) +
+geom_line(aes(x = age, y = x.dens, color = 'red'),data = Ages) +
+labs(y = 'Density', title = 'Distribution of Ages') +
+theme_bw() +
+theme(legend.position = "none")
+```
+
+> First looking at the age distribution of the whole group seems normally distributed ranged from 24 to 80, with age 50 being the most porportion of the whole group. Since it's a mediacal test, we can see that the general age is pretty high. Since the age is written in days, we would divide it by 365 days, and turn them into a year to make it look better visually.
+
+```{r data analysis1}
+ggplot(cholangitis, aes(x = age, fill = status)) + geom_density(alpha = 0.5) + 
+  labs(x= "age", y = "Density") + ggtitle("Age and Days survived") + 
+  geom_vline(xintercept = mean(filter(cholangitis, status == 'C')$age), 
+             color = 'red', linetype="dotted", lwd= 1) + 
+  geom_vline(xintercept = mean(filter(cholangitis, status == 'CL')$age), 
+             color = 'green', linetype="dotted", lwd = 1) + 
+  geom_vline(xintercept = mean(filter(cholangitis, status == 'D')$age), 
+             color = 'blue', linetype="dotted", lwd =1) +
+  theme_bw()
+```
+
+> Then to find out if there was any correlation among age and the days survived, I've used the density plot to compare them. The plot is filled, showing status for each based on the age. For those who died, is showing somewhat normal distribution, and those who are not dead and received liver transplant was right-skewed showing having the average age of lower. The groups died had the highest aveage among the groups regarding status. The dotted lines indicates the mean of the data(age) with the following color indicated through legend.
+
+
+```{r data analysis2}
+sex_dist <- df3 %>% 
+  ggplot(aes(x = sex, y = n, fill = sex, label = n)) +
+  geom_col() +
+  theme_bw() + 
+  labs(x = "Gender", y = "count") +
+   geom_text(position = position_stack(vjust = 0.5), size = 3, 
+             color = "#ffffff") + 
+  theme(legend.position = "none")
+sex_dist
+```
+
+> The gender count seems a bit interesting, as there are about 9 more times of females in the experiement than the male participants. Just by looking at the bar, we are able to notice the difference. 
+
+```{r data analysis3}
+ggplot(cholangitis, aes(x = sex, y = n_days)) +
+  geom_boxplot(fill="slateblue", alpha=0.2) +
+  labs(x = "Gender", y = "Survived Days") +
+  theme_bw()
+```
+
+> Adding on from gender, I was wondering if there was a difference among gender for the days of survival, therefore I plotted through a boxplot to see if there was a vast difference. The mean seemed to be lower for male, but they seemed not much of a difference in a whole.
+
+
+```{r data analysis4}
+gen_stat <- df5 %>% 
+  ggplot(aes(x = sex , y = n, fill = status, label = n)) +
+  geom_col() +
+  theme_bw() +
+   labs(x= "Gender", y = "Status Counts") +
+  ggtitle("Gender and Status Counts") +
+geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+
+gen_drug <- df6 %>% 
+  ggplot(aes(x = sex, y = n, fill = drug, label = n)) +
+  geom_col() +
+  theme_bw() +
+  labs(x= "Gender", y = "Treatment Counts") +
+  ggtitle("Gender and Treatment Counts") +
+  geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+
+gen_stat + gen_drug
+```
+
+> Even though there was a difference in the absolute number among gender, the proportion of status and treatment given was distributed in similar proportion to each other, which kind of relieved the thought that it might be biased somehow. 
+
+```{r data analysis5}
+ggplot(cholangitis, aes(x = n_days, fill = status)) + 
+  geom_density(alpha = 0.5) + xlab("Number of Days") + 
+  ggtitle("Days enrolled in Study and Status") + 
+  geom_vline(xintercept = mean(filter(cholangitis, status == 'C')$n_days), 
+             color = 'red', linetype="dotted", lwd = 1) + 
+  geom_vline(xintercept = mean(filter(cholangitis, status == 'CL')$n_days), 
+             color = 'green', linetype="dotted", lwd = 1) +
+  geom_vline(xintercept = mean(filter(cholangitis, status == 'D')$n_days), 
+             color = 'blue', linetype="dotted", lwd = 1) +
+  theme_bw()
+```
+
+> Moving on from gender, now looking at the number of days enrolled in the study and the status of them, the groups that died were skewed the most, having the lowest average of the days of survival. Those who didn't died with the highest average, but what was interesting is that it's kind of right skewed as well as other plots. 
+
+```{r data analysis6}
+drug_status <- ggplot(cholangitis, aes(x = drug, fill = status)) + 
+  geom_bar() + xlab("Treatment") + ggtitle("Drug Treatment along with status")+
+  theme_bw()
+
+drug_stage <- df %>% 
+  ggplot(aes(x = drug, y = n, fill = stage, label = n)) +
+  ggtitle("Drug Treatment along with stage") +
+  geom_col() +
+  theme_bw() +
+  labs(x = "Treatment", y= "count") +
+geom_text(position = position_stack(vjust = 0.5), size = 3, color = "#ffffff")
+
+drug_status + drug_stage
+```
+
+> Now comparing the treatment given with the current status and the stage, the left plot is representing the drug and it's count and each of the portion explains the status. The right plot is representing the drug given and the portion of the stage. For each of the treatments given, the status and stage seems to have similar proportions to each other, showing no big of a difference which I wondered if there would be a bias.
+
+
+```{r}
+ggplot(cholangitis, aes(x = n_days)) + 
+  theme_bw() + geom_boxplot(aes(fill = drug)) + 
+  xlab("Treatment") + ggtitle("Drug treatment and days survived by stage") + 
+  facet_wrap(~ stage)
+```
+
+> To find the surived days of the patients, I wanted to find out if there would be a difference among the stage with the difference of treatment given with the days of survival. All except for the first stage, the means seem to be similar regardless of the treatment they've recieved but for the first stage, it kind of shows difference among the drug that had been applied, which was kind of intresting to find.
+
+
+```{r data analysis7}
+ggplot(cholangitis, aes(x = drug, fill = status)) + 
+  geom_bar() + xlab("Treatment") + 
+  ggtitle("Drug treatment and status by stage") + 
+  facet_wrap(~ stage) + 
+  theme_bw() 
+```
+
+> Now comparing the treatment with the treatments that were assigned on each stage and their survival, it shows that there are more and more deaths occured with the stage development, but since the proportion of treatments assigned seems mostly identical to each other. What's interesting is however, that the stage one had the most living, regardless of the treatment given. 
+
+
+```{r}
+cholangitis_explanatory <- cholangitis[,c(-1,-3,-4,-6:-10,-20)]
+cholangitisSCALED = scale(cholangitis_explanatory)
+cholangitis.pca = prcomp(cholangitisSCALED, scale = F)
+
+colstatus <- c("red", "green", "blue")
+plotPCA <- cholangitis.pca$x[,1:4]
+names(colstatus) <- levels(cholangitis$status)
+
+pairs(plotPCA, col = colstatus[cholangitis$status], 
+      main = "Pairs plot of the PCA  4 by status",
+      pch = 21)
+  legend("center",legend =names(colstatus), fill= colstatus, cex = 0.5)
+```
+
+> This is the PCA plotted by pairs of the explanatory data of the cholangitis dataset. Red, Green and Blue indicates the staus of lived, received liver transplant, and dead respectively in order. It is interesting to find, but in the same time kinds of make sense that the deads are showing difference that those dead are shown as outliers. They are the ones suffering dieases, showing outliers in the health data. The individual data seems to cluster. 
+
+```{r data analysis8}
+# subsetting 
+subset_chol <- cholangitis[, names(which(sapply(cholangitis, is.numeric)))]
+subset_chol <- subset(subset_chol, select = -c(1:3))
+
+#code for histograms
+par(mfrow =c(3,3))
+for (i in names(subset_chol)) {
+  hist(subset_chol[, i], freq = FALSE, xlab = i, main ="")
+  lines(density(subset_chol[, i]), col ="red")
+}
+```
+
+> I plotted the histograms to find out the genral distribution of the genral health information, and surprisingly I was able to find out that most of the information were right-skewed, and were able to identify the outliers, except albumin and platelets. There were values far off from the where data is distributed. This later will be turned into log to see if they show a better distribution than they intially were.
+
+```{r data analysis9}
+par(mfrow = c(2,2))
+for (i in names(subset_chol)) {
+  boxplot(subset_chol[,i], xlab = i, las =2)
+}
+```
+
+> As boxplots is an effective methods for showing the unusual or extreme points, I used them to see the overall general health information, and addition to the histogram that we've just done, I've found out that there seems to be plenty of outliers that have to be discarded or renewed for a better dataset.
+
+## Multivariate Regression
+
+## Data Processing
+
+```{r}
+data <- subset(cholangitis[, -1])
+data <- na.omit(data)
+```
+
+> First for the data processing, I removed the 'id' column which I thought is not meaningful in the context of regression analysis. It is the unique number that is given to the individuals, which wouldn't make such differnece in the regression analysis. 
+As we are trying to find the effect of the drug on the days of survival, it would make sense to remove the NA drugs. I also removed the rows containing missing values, as I've did previously. 
+
+## Multivariate regression analysis
+
+First, I'm going to run the regression model based on n_days as our response variable, and the summary of the linear model alongside regression diagnostics. 
+
+```{r}
+initial_model <- lm(n_days ~ ., data = data)
+summary(initial_model)
+```
+
+> With this plot, we are able to find out that the values of R-square and Adjusted R-squared, along with the residual standard error and significant variables to compare with the transformed regression data. With the result we currently have, R-squared of 0.4592 and Adjusted R-squared of 0.4173, which is to say, it is hard to say we have a 'best' model so far. 
+
+
+> Now, with the regression created, we are going to run a diagnostics test to see how the initial data would need transformation in any kind. 
+
+```{r}
+par(mfrow=c(2,3))
+plot(initial_model, which = c(1:5))
+```
+
+> From the basic observation of the regression diagnostics, there seems to be few outliers that has to be identified for a better dataset. The residual mean isn't close to zero also the decrease and increase pattern in the residuals vs fitted plot shows heteroscedasticity, Normal Q-Q show that it's not following the straight line, which indicates that there might be a slight skew from the normal distribution, Scale-Location plot also indicates that there is heteroscedasticity. Cook's distance indicates the outliers that stands out. 
+
+
+```{r}
+identifying_outliers <- which(cooks.distance(initial_model) > 0.03)
+identifying_outliers
+```
+
+> Cooks Distance: The outliers were tried to defined thats above the 0.03 threshold, as those were the points that was spiking looking directly through the plot. 87 seems to be in the similar position to some of the points, which may seem that it isn't regarded as outliers, however if I plot them, I can identify with other plots that 87 is the point that's spiking out a lot of time, that's why I also decided to exclude it. 
+
+```{r}
+data = data[-c(44, 56, 87), ]
+```
+
+
+> Next, we will try to transform the response variable into log, to see if it will show any outcomes that are interesting or approved from the original data. The reason we are trying to transform the data is because in the EDA part, we observed that the distribution of our response variable (n_days) is right-skewed. We are trying to find a better fit overall. 
+
+```{r}
+log_model <- lm(log(n_days) ~ ., data = data)
+summary(log_model)
+```
+
+> It's interesting that the R-squared has been improved along with the lower residual standard error, which respectively explains that it explains more of the variance in the dependent variable and predictions are closer to the observed values on average. However, not just interpreting from this data, we will also have to compare the plots as well. 
+
+```{r}
+par(mfrow=c(2,3))
+plot(log_model, which = c(1:5))
+```
+
+> The log transformed data wasn't effective. The Residuals vs Fitted models indicate that the resiudal mean is closer to zero compared to the initial model, but looking at the normal Q-Q, it was definately showing more skewness in graph, by looking at the fact that it's not closer to the line. In the Scale-Location plot, we can see a decrease pattern, where we can identify heteroscedasticity.
+
+> Next, we will look into account of the sqrt. 
+
+```{r}
+sqrt_model <- lm(sqrt(n_days) ~ ., data = data)
+summary(sqrt_model)
+```
+
+> Compared to the initial model, it has higher R-squared, however, lower than the log transformed model. The Residual are lower than the initial model, but higher than the log transformed data. As it's higher than the initial model it implies that transformation method would improve our regression model.
+
+
+```{r}
+par(mfrow=c(2,3))
+plot(sqrt_model,which= c(1:5))
+```
+> Residuals are randomly distributed, and its mean are almost equal to zero. Besides, Q-Q plot shows that most points lies on the line, and for the Scale-Location as well, we can see comparably less increase and decrease pattern. So we can say that this model satisfies the assumptons of linearity. 
+
+## Comparing the  Models
+
+```{r}
+par(mfrow = c(3,3))
+plot(initial_model, which = c(1,2,3))
+plot(log_model, which = c(1,2,3))
+plot(sqrt_model, which = c(1,2,3))
+```
+> Comparing from the plots, First looking at the Residuals vs Fitted particaularly, the line of the sqrt plots seemed to be a straight line, the mean of residual is closer to zero compared to other grpahs. Looking at the nomal Q-Q graph, there isn't much of a difference between them. However, in the Scale - Location model, compared to the initial model, the sqrt model seems to have almsot no increase or decrease where we can say that almost no heteroscedasticity is found. Therefore we choose the third plot, the sqrt model plot. 
+
+## Variable Selection
+
+> To find the ultimate model, we will use the function step for variable selection. Alongside looking at the plot itself, but also for the r-squared values, we can indicate it's a better plot to start at.
+
+```{r}
+data_under_3 <- data %>% select(-c("status", "edema", "stage"), )
+sqrt.model.for.step <- lm(sqrt(n_days) ~ ., data = data_under_3)
+```
+
+> Since we were told to avoid using variables that have more than two levels, status, edema and stage were excluded from the data. 
+
+```{r}
+step(sqrt.model.for.step, trace = 1, direction = "both")
+```
+
+
+> Using the stepwise method, we can indicate given the lowest AIC of 1431.59, find the optimal model to predict n_days would be in this case ascites, hpatomegaly, spiders, bilirubin, albumin, copper and alk_phos. 
+
+
+```{r}
+AIC_data <- lm(formula = sqrt(n_days) ~ ascites + hepatomegaly + spiders + 
+    bilirubin + albumin + copper + alk_phos, data = data_under_3)
+summary(AIC_data)
+```
+
+> Now putting a summary of our best prediction, I have added the drugs since it was not included as the outcome,  but since it's our primary interest of the project, I've added them for building the regression. To further elaborate, even our goal in this variable section is to take the best features and make the best model, and it has given the variables to use, but adding drug shouldn't have an major impact, since randomized coefficience on other varaible, it will not be correlated with other variables.
+The r-squared seems to be lower than the initial data, but I think this it's due to excluding the variables that are higher than level 2. Even though the number of variables are different,looking at the adjusted R-squared, we can still find that it's higher than the initial data.
+
+
+## Regression Diagnostics
+
+```{r}
+data_final <- AIC_data
+par(mfrow=c(2,3))
+plot(data_final, which = c(1:5))
+```
+
+```{r}
+par(mfrow=c(2,3))
+plot(initial_model, which = c(1:5))
+```
+> These are the plots of the final model, and the initial model in order respectively. Compared to the inital model, we can say that the final model has improved significantly in terms of plots. For Residuals vs Fitted, even though it shows some decrease and increase pattern, the residual mean is much closer to zero, The Q-Q plot doesn't show much of a difference, yet are still in the range of normality, and can show some skewness, and for the Scale-Location plot, we can say that it got much better based on the fact that it refined the increasing pattern a bit, showing somewhat straight line.
+It was overall stablizing the variance and leading to more reliable estimates and standard errors .
+
+## Conclusion : What conclusion can you draw about the effect of the drug D-penicillamine on the number of days a patient survived?
+
+> The p-value of our final model came out to be 0.839908 regarding drugs. Without the sqrt function to the response variable, it still came out to be pretty high, way higher than 0.05. However, the way it doesn't really matter is that even the p-value indicates that there isn't much of the effect of the drug D-penicillamine on the number of days a patient survived, we cannot conclude it since we don't have enough evidence to suggest that particualr drug has a significant impact. This is because the p-value indicates that the difference in D-penicillamine and Placebo could be due to random chance. The reason the drug is randomly assigned is crucial because otherwise, the affect of the variables are interacting with each other. 
